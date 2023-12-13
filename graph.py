@@ -42,18 +42,21 @@ class Graph:
         self.edges = [[] for _ in range(n)]
         self.n = n
 
-    def add_edge(self, source: int, target: int, capacity: int):
-        edge = Edge(source, target, capacity)
-        rev_edge = Edge(target, source, reverse=True)
+    def add_edge(self, start: int, end: int, capacity: int):
+        edge = Edge(start, end, capacity)
+        rev_edge = Edge(end, start, reverse=True)
 
         edge.reverse_edge = rev_edge
         rev_edge.reverse_edge = edge
 
-        self.edges[source].append(edge)
-        self.edges[target].append(rev_edge)
+        self.edges[start].append(edge)
+        self.edges[end].append(rev_edge)
 
     def get_edges_by_node(self, node: int):
         return self.edges[node]
+
+    def get_degree(self, node: int):
+        return len(self.edges[node])
 
     def get_edges(self):
         for i in range(self.n):
@@ -71,3 +74,9 @@ class Graph:
 
     def number_of_nodes(self):
         return self.n
+
+    def copy(self):
+        new_graph = Graph(self.number_of_nodes())
+        for edge in self.get_edges():
+            new_graph.add_edge(edge.start, edge.end, edge.capacity)
+        return new_graph
