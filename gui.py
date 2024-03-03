@@ -4,23 +4,23 @@ from tkinter import ttk
 
 from tabulate import tabulate
 
+import graph
 import max_flow
 import random_graph
 import utils
 
-ALGORITHMS_MAP = {"Ford-Fulkerson": max_flow.FordFulkerson,
-                  "Edmonds-Karp": max_flow.EdmondsKarp,
-                  "Capacity Scaling": max_flow.CapacityScaling,
-                  "Dinic": max_flow.Dinic,
-                  # TODO
-                  # "Goldberg-Tarjan": max_flow.GoldbergTarjan
+ALGORITHMS_MAP = {"Ford-Fulkerson": max_flow.ford_fulkerson,
+                  "Edmonds-Karp": max_flow.edmonds_karp,
+                  "Capacity Scaling": max_flow.capacity_scaling,
+                  "Dinic": max_flow.dinic,
+                  "Goldberg-Tarjan": max_flow.goldberg_tarjan
                   }
 ALGORITHMS = list(ALGORITHMS_MAP.keys())
 
 
 class Visualization(tk.Frame):
-    DEFAULT_NODES = 6
-    DEFAULT_MAX_CAPACITY = 5
+    DEFAULT_NODES = 10
+    DEFAULT_MAX_CAPACITY = 10
     NODE_RADIUS = 8
 
     def __init__(self, parent):
@@ -76,14 +76,13 @@ class Visualization(tk.Frame):
         self._jop = None
 
         self.graph = random_graph.generate(self.DEFAULT_NODES, self.DEFAULT_MAX_CAPACITY)
-        self.source = 0
-        self.target = 0
+        self.source, self.target = utils.get_source_and_target(self.graph)
 
         self.after(100, self.render)
 
     def render(self):
-        width = self.canvas.winfo_width()
-        height = self.canvas.winfo_height()
+        width = self.master.winfo_screenwidth()
+        height = self.master.winfo_screenheight()
 
         self.canvas.create_rectangle(0, 0, width, height, fill="white")
 
@@ -101,7 +100,7 @@ class Visualization(tk.Frame):
             if node.node_id == self.source:
                 color = "blue"
             elif node.node_id == self.target:
-                color = "yellow"
+                color = "purple"
             else:
                 color = "black"
 
@@ -126,16 +125,29 @@ class Visualization(tk.Frame):
                                              fill="white", outline="white")
                 self.canvas.create_text(text_x, text_y, text=f"{edge.flow}/{edge.capacity}")
 
-    def render_edges(self):
-        width = self.canvas.winfo_width()
-        height = self.canvas.winfo_height()
+    def get_edge_positions(self, edge: graph.Edge):
+        window_width = self.canvas.winfo_width()
+        window_height = self.canvas.winfo_height()
 
+        x1, y1 = utils.absolute_position(self.graph.get_nodes()[edge.start], window_width, window_height)
+        x2, y2 = utils.absolute_position(self.graph.get_nodes()[edge.end], window_width, window_height)
+
+        dx, dy = x2 - x1, y2 - y1
+        length = (dx ** 2 + dy ** 2) ** 0.5
+
+        dx /= length
+        dy /= length
+
+        x1, y1 = x1 + dx * self.NODE_RADIUS, y1 + dy * self.NODE_RADIUS
+        x2, y2 = x2 - dx * self.NODE_RADIUS, y2 - dy * self.NODE_RADIUS
+
+        return x1, y1, x2, y2
+
+    def render_edges(self):
         for edge in self.graph.get_edges():
             if not edge.reverse:
-                # TODO move arrow start and end to the outline of the node circles
-                p1 = utils.absolute_position(self.graph.get_nodes()[edge.start], width, height)
-                p2 = utils.absolute_position(self.graph.get_nodes()[edge.end], width, height)
-                self.canvas.create_line(p1, p2, width=3, fill="black", arrow=tk.LAST, arrowshape=(10, 10, 5))
+                x1, y1, x2, y2 = self.get_edge_positions(edge)
+                self.canvas.create_line(x1, y1, x2, y2, width=3, fill="black", arrow=tk.LAST, arrowshape=(10, 15, 5))
 
     def render_step(self, result):
         self.render()
@@ -143,21 +155,23 @@ class Visualization(tk.Frame):
         width = self.canvas.winfo_width()
         height = self.canvas.winfo_height()
 
-        if self.algo_variable.get() == "Dinic":
-            edges, level = result
-            for node in self.graph.get_nodes():
-                position = utils.absolute_position(node, width, height)
-                self.canvas.create_text(*position,
-                                        text=f"{level[node.node_id]}",
-                                        fill="white",
-                                        font=('Helvetica', '10', 'bold'))
-        else:
-            edges = result
+        match self.algo_variable.get():
+            case "Dinic":
+                edges, level = result
+                for node in self.graph.get_nodes():
+                    position = utils.absolute_position(node, width, height)
+                    self.canvas.create_text(*position,
+                                            text=f"{level[node.node_id]}",
+                                            fill="white",
+                                            font=("Helvetica", "10", "bold"))
+            case "Goldberg-Tarjan":
+                edges = []  # todo
+            case _:
+                edges = result
 
         for edge in edges:
-            p1 = utils.absolute_position(self.graph.get_nodes()[edge.start], width, height)
-            p2 = utils.absolute_position(self.graph.get_nodes()[edge.end], width, height)
-            self.canvas.create_line(p1, p2, width=3, fill="red", arrow=tk.LAST, arrowshape=(10, 15, 5))
+            x1, y1, x2, y2 = self.get_edge_positions(edge)
+            self.canvas.create_line(x1, y1, x2, y2, width=3, fill="red", arrow=tk.LAST, arrowshape=(10, 15, 5))
         self.render_text()
 
     def algorithm_terminated(self):
@@ -178,6 +192,7 @@ class Visualization(tk.Frame):
             capacity = int(self.ent_capacity.get())
 
             self.graph = random_graph.generate(n, capacity)
+            self.source, self.target = utils.get_source_and_target(self.graph)
             self.render()
 
             self.opt_algorithm["state"] = tk.NORMAL
@@ -192,13 +207,13 @@ class Visualization(tk.Frame):
 
     def step(self):
         if self.max_flow_algo is None:
-            self.source, self.target = utils.get_source_and_target(self.graph)
             self.max_flow_algo = ALGORITHMS_MAP[self.algo_variable.get()](self.graph, self.source, self.target)
             self.opt_algorithm["state"] = tk.DISABLED
 
-        if result := self.max_flow_algo.step():
+        try:
+            result = next(self.max_flow_algo)
             self.render_step(result)
-        else:
+        except StopIteration:
             self.algorithm_terminated()
 
     def start(self):
@@ -225,7 +240,7 @@ class Visualization(tk.Frame):
 
     def help(self):
         messagebox.showinfo("Help", """
-Max-Flow Visualization
+Max-Flow Algorithms Visualization
 
 notation:
 n: number of nodes\tm: number of edges
@@ -236,7 +251,11 @@ Ford-Fulkerson: O(m F)
 Edmonds-Karp: O(n m^2)
 Capacity Scaling: O(n m logC)
 Dinic: O(m n^2)
-Goldberg-Tarjan: O()
+Goldberg-Tarjan: O(n^3)
+
+source: blue
+target: purple
+edge labels: flow/capacity
 """)
 
 
@@ -284,11 +303,11 @@ class TestEnviroment(tk.Frame):
                 result = [["Algorithm", "flow preservation", "capacity bound", "max flow"]]
                 flow_values = []
 
-                for name, algo_class in ALGORITHMS_MAP.items():
+                for name, algo_func in ALGORITHMS_MAP.items():
                     result_graph = graph.copy()
-                    algo = algo_class(result_graph, source, target)
+                    algo = algo_func(result_graph, source, target)
 
-                    while algo_result := algo.step():
+                    for _ in algo:
                         pass
 
                     # capacity bound check
@@ -319,7 +338,15 @@ class TestEnviroment(tk.Frame):
 
 window = tk.Tk()
 window.title("Max-Flow Algorithms")
-window.geometry("1200x800")
+
+width = 1200
+height = 800
+screen_width = window.winfo_screenwidth()
+screen_height = window.winfo_screenheight()
+x = int((screen_width / 2) - (width / 2))
+y = int((screen_height / 2) - (height / 2))
+window.geometry(f"{width}x{height}+{x}+{y}")
+
 window.columnconfigure(0, weight=1)
 window.rowconfigure(0, weight=1)
 

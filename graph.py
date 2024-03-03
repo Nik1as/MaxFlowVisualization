@@ -1,4 +1,4 @@
-import random
+import math
 
 
 class Node:
@@ -38,7 +38,12 @@ class Edge:
 class Graph:
 
     def __init__(self, n: int):
-        self.nodes = [Node(i, random.random(), random.random()) for i in range(n)]
+        rows = math.ceil(math.sqrt(n))
+        padding = 1 / (rows + 1)
+        self.nodes = [Node(i,
+                           (i % rows) / rows + padding,
+                           (i // rows) / rows + padding)
+                      for i in range(n)]
         self.edges = [[] for _ in range(n)]
         self.n = n
 

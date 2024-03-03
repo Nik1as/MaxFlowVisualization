@@ -1,4 +1,5 @@
 import itertools
+import math
 import random
 
 from graph import Graph
@@ -16,11 +17,15 @@ def generate(n: int, max_capacity: int) -> Graph:
     graph = Graph(n)
 
     all_edges = list(itertools.permutations(graph.get_nodes(), 2))
+    random.shuffle(all_edges)
     all_edges.sort(key=lambda edge: euclidean_distance(*edge))
 
     edges = []
+    rows = math.ceil(math.sqrt(n))
     for n1, n2 in all_edges:
-        if not any(line_intersect(n1, n2, n3, n4) for (n3, n4) in edges):
+        if (not any(line_intersect(n1, n2, n3, n4) for (n3, n4) in edges)
+                and abs(n1.node_id % rows - n2.node_id % rows) <= 1
+                and abs(n1.node_id // rows - n2.node_id // rows) <= 1):
             edges.append((n1, n2))
 
     for n1, n2 in edges:

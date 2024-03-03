@@ -1,6 +1,7 @@
+import itertools
+import math
 import random
 import tkinter as tk
-import math
 
 import max_flow
 from graph import Graph, Node
@@ -14,17 +15,17 @@ def absolute_position(node: Node, width, height):
     return round(node.x * width), round(node.y * height)
 
 
-def get_source_and_target(graph: Graph):  # TODO min-cut
-    for s in range(graph.number_of_nodes()):
-        for t in range(graph.number_of_nodes()):
-            if s != t:
-                if max_flow.dfs(graph, s, t):
-                    return s, t
+def get_source_and_target(graph: Graph):
+    combinations = list(itertools.combinations(range(graph.number_of_nodes()), 2))
+    random.shuffle(combinations)
+    for s, t in combinations:
+        if max_flow.dfs(graph, s, t):
+            return s, t
     return random.sample(range(graph.number_of_nodes()), 2)
 
 
-# https://stackoverflow.com/questions/27820178/how-to-add-placeholder-to-an-entry-in-tkinter
 class EntryWithPlaceholder(tk.Entry):
+    # https://stackoverflow.com/questions/27820178/how-to-add-placeholder-to-an-entry-in-tkinter
     def __init__(self, master=None, placeholder="PLACEHOLDER", color="grey", width=15):
         super().__init__(master, width=width)
 
