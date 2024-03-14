@@ -1,3 +1,4 @@
+import math
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
@@ -19,9 +20,11 @@ ALGORITHMS = list(ALGORITHMS_MAP.keys())
 
 
 class Visualization(tk.Frame):
-    DEFAULT_NODES = 10
+    DEFAULT_NODES = 12
     DEFAULT_MAX_CAPACITY = 10
-    NODE_RADIUS = 8
+    NODE_RADIUS = 20
+    TEXT_OFFSET = 15
+    ANGLE = 25
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -66,7 +69,7 @@ class Visualization(tk.Frame):
         self.btn_stop.grid(row=0, column=9, padx=10)
 
         self.btn_help = tk.Button(text="help", master=config_bar, command=self.help)
-        self.btn_help.grid(row=0, column=9, padx=11)
+        self.btn_help.grid(row=0, column=10, padx=11)
 
         config_bar.pack(anchor=tk.N)
 
@@ -75,20 +78,22 @@ class Visualization(tk.Frame):
 
         self._jop = None
 
-        self.graph = random_graph.generate(self.DEFAULT_NODES, self.DEFAULT_MAX_CAPACITY)
-        self.source, self.target = utils.get_source_and_target(self.graph)
+        self.source, self.target, self.graph = random_graph.generate(self.DEFAULT_NODES, self.DEFAULT_MAX_CAPACITY)
 
         self.after(100, self.render)
 
-    def render(self):
+    def clear_canvas(self):
         width = self.master.winfo_screenwidth()
         height = self.master.winfo_screenheight()
 
         self.canvas.create_rectangle(0, 0, width, height, fill="white")
 
-        self.render_edges()
+    def render(self):
+        self.clear_canvas()
         self.render_nodes()
-        self.render_text()
+
+        for edge in self.graph.get_base_edges():
+            self.render_edge(edge, "black")
 
     def render_nodes(self):
         width = self.canvas.winfo_width()
@@ -108,46 +113,59 @@ class Visualization(tk.Frame):
                                     absolute_x + self.NODE_RADIUS, absolute_y + self.NODE_RADIUS,
                                     fill=color)
 
-    def render_text(self):
+    def render_single_edge(self, edge: graph.Edge, color: str):
         width = self.canvas.winfo_width()
         height = self.canvas.winfo_height()
 
-        for edge in self.graph.get_edges():
-            if not edge.reverse:
-                p1 = utils.absolute_position(self.graph.get_nodes()[edge.start], width, height)
-                p2 = utils.absolute_position(self.graph.get_nodes()[edge.end], width, height)
+        x1, y1, x2, y2 = utils.edge_positions(
+            utils.Point(*utils.absolute_position(self.graph.get_node(edge.start), width, height)),
+            utils.Point(*utils.absolute_position(self.graph.get_node(edge.end), width, height)),
+            self.NODE_RADIUS)
 
-                offset = 10
-                text_x = (p1[0] + p2[0]) // 2
-                text_y = (p1[1] + p2[1]) // 2
-                self.canvas.create_rectangle(text_x - offset, text_y - offset,
-                                             text_x + offset, text_y + offset,
-                                             fill="white", outline="white")
-                self.canvas.create_text(text_x, text_y, text=f"{edge.flow}/{edge.capacity}")
+        self.canvas.create_line(x1, y1,
+                                x2, y2,
+                                width=3, fill=color, arrow=tk.LAST, arrowshape=(10, 15, 5))
 
-    def get_edge_positions(self, edge: graph.Edge):
-        window_width = self.canvas.winfo_width()
-        window_height = self.canvas.winfo_height()
+        p1 = utils.Point(x1, y1)
+        p2 = utils.Point(x2, y2)
+        self.canvas.create_text(*utils.text_position(p1, p2, self.TEXT_OFFSET), text=str(edge.residual_capacity()))
 
-        x1, y1 = utils.absolute_position(self.graph.get_nodes()[edge.start], window_width, window_height)
-        x2, y2 = utils.absolute_position(self.graph.get_nodes()[edge.end], window_width, window_height)
+    def render_double_edge(self, edge: graph.Edge, color: str):
+        width = self.canvas.winfo_width()
+        height = self.canvas.winfo_height()
 
-        dx, dy = x2 - x1, y2 - y1
-        length = (dx ** 2 + dy ** 2) ** 0.5
+        node1 = utils.Point(*utils.absolute_position(self.graph.get_node(edge.start), width, height))
+        node2 = utils.Point(*utils.absolute_position(self.graph.get_node(edge.end), width, height))
 
-        dx /= length
-        dy /= length
+        x1, y1, x2, y2 = utils.edge_positions(node1,
+                                              node2,
+                                              self.NODE_RADIUS)
 
-        x1, y1 = x1 + dx * self.NODE_RADIUS, y1 + dy * self.NODE_RADIUS
-        x2, y2 = x2 - dx * self.NODE_RADIUS, y2 - dy * self.NODE_RADIUS
+        p1 = utils.Point(*utils.rotate(node1, utils.Point(x1, y1), math.radians(self.ANGLE)))
+        p2 = utils.Point(*utils.rotate(node2, utils.Point(x2, y2), math.radians(-self.ANGLE)))
 
-        return x1, y1, x2, y2
+        self.canvas.create_line(p1.x, p1.y,
+                                p2.x, p2.y,
+                                width=3, fill=color, arrow=tk.LAST, arrowshape=(10, 15, 5))
+        self.canvas.create_text(*utils.text_position(p1, p2, self.TEXT_OFFSET),
+                                text=str(edge.residual_capacity()))
 
-    def render_edges(self):
-        for edge in self.graph.get_edges():
-            if not edge.reverse:
-                x1, y1, x2, y2 = self.get_edge_positions(edge)
-                self.canvas.create_line(x1, y1, x2, y2, width=3, fill="black", arrow=tk.LAST, arrowshape=(10, 15, 5))
+        p1 = utils.Point(*utils.rotate(node2, utils.Point(x2, y2), math.radians(self.ANGLE)))
+        p2 = utils.Point(*utils.rotate(node1, utils.Point(x1, y1), math.radians(-self.ANGLE)))
+
+        self.canvas.create_line(p1.x, p1.y,
+                                p2.x, p2.y,
+                                width=3, fill=color, arrow=tk.LAST, arrowshape=(10, 15, 5))
+        self.canvas.create_text(*utils.text_position(p1, p2, self.TEXT_OFFSET),
+                                text=str(edge.reverse_edge.residual_capacity()))
+
+    def render_edge(self, edge: graph.Edge, color: str):
+        if edge.residual_capacity() > 0 and edge.reverse_edge.residual_capacity() > 0:
+            self.render_double_edge(edge, color)
+        elif edge.residual_capacity() > 0:
+            self.render_single_edge(edge, color)
+        elif edge.reverse_edge.residual_capacity() > 0:
+            self.render_single_edge(edge.reverse_edge, color)
 
     def render_step(self, result):
         self.render()
@@ -160,39 +178,85 @@ class Visualization(tk.Frame):
                 edges, level = result
                 for node in self.graph.get_nodes():
                     position = utils.absolute_position(node, width, height)
+                    if level[node.node_id] >= 0:
+                        self.canvas.create_text(*position,
+                                                text=f"{level[node.node_id]}",
+                                                fill="white",
+                                                font=("Helvetica", "10", "bold"))
+            case "Goldberg-Tarjan":
+                edges, excess, label, node_id = result
+                for node in self.graph.get_nodes():
+                    position = utils.absolute_position(node, width, height)
                     self.canvas.create_text(*position,
-                                            text=f"{level[node.node_id]}",
+                                            text=f"{label[node.node_id]} | {excess[node.node_id]}",
                                             fill="white",
                                             font=("Helvetica", "10", "bold"))
-            case "Goldberg-Tarjan":
-                edges = []  # todo
+
+                absolute_x, absolute_y = utils.absolute_position(self.graph.get_node(node_id), width, height)
+                self.canvas.create_oval(absolute_x - self.NODE_RADIUS, absolute_y - self.NODE_RADIUS,
+                                        absolute_x + self.NODE_RADIUS, absolute_y + self.NODE_RADIUS,
+                                        outline="red", width=3)
             case _:
                 edges = result
 
-        for edge in edges:
-            x1, y1, x2, y2 = self.get_edge_positions(edge)
-            self.canvas.create_line(x1, y1, x2, y2, width=3, fill="red", arrow=tk.LAST, arrowshape=(10, 15, 5))
-        self.render_text()
+        for edge in self.graph.get_base_edges():
+            color = "red" if edge in edges else "black"
+            self.render_edge(edge, color)
+
+    def render_result(self):
+        width = self.canvas.winfo_width()
+        height = self.canvas.winfo_height()
+
+        self.clear_canvas()
+        self.render_nodes()
+
+        for edge in self.graph.get_base_edges():
+            node1 = utils.Point(*utils.absolute_position(self.graph.get_node(edge.start), width, height))
+            node2 = utils.Point(*utils.absolute_position(self.graph.get_node(edge.end), width, height))
+
+            x1, y1, x2, y2 = utils.edge_positions(node1,
+                                                  node2,
+                                                  self.NODE_RADIUS)
+
+            self.canvas.create_line(x1, y1, x2, y2, width=3, fill="black", arrow=tk.LAST, arrowshape=(10, 15, 5))
+
+            text_x, text_y = utils.text_position(utils.Point(x1, y1), utils.Point(x2, y2), 0)
+            offset = 20
+            self.canvas.create_rectangle(text_x - offset, text_y - offset,
+                                         text_x + offset, text_y + offset,
+                                         fill="white", outline="")
+            self.canvas.create_text(text_x, text_y,
+                                    text=f"{edge.flow}/{edge.capacity}")
 
     def algorithm_terminated(self):
         self.btn_stop["state"] = tk.DISABLED
         self.btn_step["state"] = tk.DISABLED
         self.btn_start["state"] = tk.DISABLED
         self.ent_time["state"] = tk.DISABLED
-        self.render()
+        self.render_result()
         if self._jop is not None:
             window.after_cancel(self._jop)
             self._jop = None
-        flow_value = sum(e.flow for e in self.graph.get_edges_by_node(self.source))
+
+        flow_value = 0
+        for edge in self.graph.get_edges():
+            if edge.start == self.source:
+                flow_value += edge.flow
+            if edge.end == self.source:
+                flow_value -= edge.flow
+
         messagebox.showinfo("Info", f"algorithm terminated!\nmax-flow value: {flow_value}")
 
     def reset(self):
+        if self._jop is not None:
+            window.after_cancel(self._jop)
+            self._jop = None
+
         try:
             n = int(self.ent_nodes.get())
             capacity = int(self.ent_capacity.get())
 
-            self.graph = random_graph.generate(n, capacity)
-            self.source, self.target = utils.get_source_and_target(self.graph)
+            self.source, self.target, self.graph = random_graph.generate(n, capacity)
             self.render()
 
             self.opt_algorithm["state"] = tk.NORMAL
@@ -232,6 +296,7 @@ class Visualization(tk.Frame):
 
     def stop(self):
         self.btn_step["state"] = tk.NORMAL
+        self.btn_start["state"] = tk.NORMAL
         self.ent_time["state"] = tk.NORMAL
 
         if self._jop is not None:
@@ -253,9 +318,13 @@ Capacity Scaling: O(n m logC)
 Dinic: O(m n^2)
 Goldberg-Tarjan: O(n^3)
 
+node colors:
 source: blue
 target: purple
-edge labels: flow/capacity
+
+node text:
+Dinic: distance
+Goldberg-Tarjan: label and excess
 """)
 
 
@@ -272,15 +341,16 @@ class TestEnviroment(tk.Frame):
         lbl_info.pack(fill="x")
 
         self.txt_triples = tk.Text(master=self)
-        self.txt_triples.insert(tk.END, "10, 5, 5")
+        self.txt_triples.insert(tk.END, "10, 5, 20")
         self.txt_triples.pack(fill="x")
 
-        scroll_output = tk.Scrollbar(orient='vertical', master=self)
-        scroll_output.pack(side=tk.RIGHT, fill='both')
+        scroll_output = tk.Scrollbar(orient="vertical", master=self)
+        scroll_output.pack(side=tk.RIGHT, fill="both")
 
         self.txt_output = tk.Text(yscrollcommand=scroll_output.set, master=self)
+        self.txt_output.tag_configure("center", justify="center")
         scroll_output.config(command=self.txt_output.yview)
-        self.txt_output.pack(fill="both")
+        self.txt_output.pack(fill="both", expand=True)
 
     def start_test(self):
         self.txt_output.delete(1.0, "end-1c")
@@ -296,26 +366,27 @@ class TestEnviroment(tk.Frame):
                 messagebox.showerror("Error", "invalid input")
                 return
 
-            for _ in range(instances):
-                graph = random_graph.generate(nodes, capacity)
-                source, target = utils.get_source_and_target(graph)
+            self.txt_output.insert("end-1c", f"instances: {instances}\nnodes: {nodes}\ncapacity: {capacity}\n")
 
-                result = [["Algorithm", "flow preservation", "capacity bound", "max flow"]]
+            for _ in range(instances):
+                source, target, graph = random_graph.generate(nodes, capacity)
+
+                result = [["Algorithm", "flow preservation", "capacity bound", "saturated cut", "max flow"]]
                 flow_values = []
 
                 for name, algo_func in ALGORITHMS_MAP.items():
-                    result_graph = graph.copy()
-                    algo = algo_func(result_graph, source, target)
+                    graph.reset()
+                    algo = algo_func(graph, source, target)
 
                     for _ in algo:
                         pass
 
                     # capacity bound check
                     capacity_bound = True
-                    flow_in = [0 for _ in range(result_graph.number_of_nodes())]
-                    flow_out = [0 for _ in range(result_graph.number_of_nodes())]
+                    flow_in = [0 for _ in range(graph.number_of_nodes())]
+                    flow_out = [0 for _ in range(graph.number_of_nodes())]
 
-                    for edge in result_graph.get_edges():
+                    for edge in graph.get_edges():
                         if not edge.reverse:
                             flow_out[edge.start] += edge.flow
                             flow_in[edge.end] += edge.flow
@@ -323,29 +394,33 @@ class TestEnviroment(tk.Frame):
                                 capacity_bound = False
 
                     # flow preservation check
-                    flow_preservation = all(flow_in[i] == flow_out[i] for i in range(result_graph.number_of_nodes())
+                    flow_preservation = all(flow_in[i] == flow_out[i] for i in range(graph.number_of_nodes())
                                             if i not in (source, target))
 
-                    flow = sum(edge.flow for edge in result_graph.get_edges() if not edge.reverse)
+                    saturated_cut = max_flow.bfs(graph, source, target) is None
+
+                    flow = flow_out[source] - flow_in[source]
                     flow_values.append(flow)
 
-                    result.append([name, flow_preservation, capacity_bound, flow])
+                    result.append([name, flow_preservation, capacity_bound, saturated_cut, flow])
 
                 self.txt_output.insert("end-1c", "\n" +
                                        tabulate(result, headers="firstrow", tablefmt="fancy_grid") +
                                        f"\nidetical max flow: {len(set(flow_values)) == 1}\n")
+                self.txt_output.tag_add("center", "1.0", "end")
+            self.txt_output.insert("end-1c", "\n\n")
 
 
 window = tk.Tk()
 window.title("Max-Flow Algorithms")
 
-width = 1200
-height = 800
+window_width = 1200
+window_height = 800
 screen_width = window.winfo_screenwidth()
 screen_height = window.winfo_screenheight()
-x = int((screen_width / 2) - (width / 2))
-y = int((screen_height / 2) - (height / 2))
-window.geometry(f"{width}x{height}+{x}+{y}")
+x = int((screen_width / 2) - (window_width / 2))
+y = int((screen_height / 2) - (window_height / 2))
+window.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
 window.columnconfigure(0, weight=1)
 window.rowconfigure(0, weight=1)
@@ -361,7 +436,7 @@ tabs.add(frame_visualization, text="Visualization")
 
 frame_test_envoirement = TestEnviroment(tabs)
 frame_test_envoirement.pack()
-tabs.add(frame_test_envoirement, text="Test enviroment")
+tabs.add(frame_test_envoirement, text="Test environment")
 
 tabs.pack(expand=True, fill="both")
 

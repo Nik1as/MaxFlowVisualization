@@ -7,12 +7,56 @@ import max_flow
 from graph import Graph, Node
 
 
+class Point:
+
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+
 def euclidean_distance(p1, p2):
     return math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
 
 
 def absolute_position(node: Node, width, height):
     return round(node.x * width), round(node.y * height)
+
+
+def edge_positions(node1, node2, radius):
+    dx, dy = node2.x - node1.x, node2.y - node1.y
+    length = (dx ** 2 + dy ** 2) ** 0.5
+
+    dx_norm = dx / length
+    dy_norm = dy / length
+
+    x1, y1 = node1.x + dx_norm * radius, node1.y + dy_norm * radius
+    x2, y2 = node2.x - dx_norm * radius, node2.y - dy_norm * radius
+
+    return x1, y1, x2, y2
+
+
+def rotate(origin, point, angle):
+    x = origin.x + math.cos(angle) * (point.x - origin.x) - math.sin(angle) * (point.y - origin.y)
+    y = origin.y + math.sin(angle) * (point.x - origin.x) + math.cos(angle) * (point.y - origin.y)
+    return x, y
+
+
+def text_position(p1, p2, offset):
+    dx, dy = p2.x - p1.x, p2.y - p1.y
+    length = (dx ** 2 + dy ** 2) ** 0.5
+
+    dx_norm = dx / length
+    dy_norm = dy / length
+
+    mid_x = p1.x + 0.5 * dx
+    mid_y = p1.y + 0.5 * dy
+
+    orthogonal_x, orthogonal_y = -dy_norm * offset, dx_norm * offset
+
+    mid_x += orthogonal_x
+    mid_y += orthogonal_y
+
+    return mid_x, mid_y
 
 
 def get_source_and_target(graph: Graph):

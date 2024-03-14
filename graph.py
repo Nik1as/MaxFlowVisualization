@@ -39,7 +39,7 @@ class Graph:
 
     def __init__(self, n: int):
         rows = math.ceil(math.sqrt(n))
-        padding = 1 / (rows + 1)
+        padding = 1 / (2 * rows)
         self.nodes = [Node(i,
                            (i % rows) / rows + padding,
                            (i // rows) / rows + padding)
@@ -68,6 +68,9 @@ class Graph:
             for edge in self.get_edges_by_node(i):
                 yield edge
 
+    def get_base_edges(self):
+        return list(filter(lambda x: not x.reverse, self.get_edges()))
+
     def has_edge(self, source, target):
         for edge in self.get_edges_by_node(source):
             if edge.start == source and edge.end == target:
@@ -77,11 +80,15 @@ class Graph:
     def get_nodes(self):
         return self.nodes
 
+    def get_node(self, node_id: int):
+        return self.nodes[node_id]
+
     def number_of_nodes(self):
         return self.n
 
-    def copy(self):
-        new_graph = Graph(self.number_of_nodes())
+    def number_of_edges(self):
+        return len(list(self.get_edges()))
+
+    def reset(self):
         for edge in self.get_edges():
-            new_graph.add_edge(edge.start, edge.end, edge.capacity)
-        return new_graph
+            edge.flow = 0

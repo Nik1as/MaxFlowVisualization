@@ -127,11 +127,6 @@ def dinic(graph: Graph, source: int, target: int):
         yield edges, level
 
 
-PREFLOW = 0
-PUSH = 1
-RELABEL = 2
-
-
 def goldberg_tarjan(graph: Graph, source: int, target: int):
     excess = [0] * graph.number_of_nodes()
     label = [0] * graph.number_of_nodes()
@@ -150,57 +145,46 @@ def goldberg_tarjan(graph: Graph, source: int, target: int):
                 in_queue[edge.end] = True
 
                 edges.append(edge)
-        return excess, label, edges
+        return edges, excess, label, source
 
-    def push(node):
+    def push(node: int):
         edges = []
         for edge in graph.get_edges_by_node(node):
-            if edge.flow == edge.capacity:
+            if edge.residual_capacity() == 0:
                 continue
 
-            v = edge.end
-            if label[node] > label[v]:
+            if label[edge.start] == label[edge.end] + 1:
                 flow = min(edge.residual_capacity(), excess[node])
-                excess[node] -= flow
-                excess[v] += flow
-                edge.adjust(flow)
-                edges.append(edge)
 
-                if excess[v] > 0 and not in_queue[v] and v not in [source, target]:
-                    active.append(v)
-                    in_queue[v] = True
+                if flow > 0:
+                    excess[edge.start] -= flow
+                    excess[edge.end] += flow
+                    edge.adjust(flow)
+                    edges.append(edge)
 
-        return excess, label, node, edges
+                    if edge.end not in (source, target) and excess[edge.end] > 0 and not in_queue[edge.end]:
+                        active.append(edge.end)
+                        in_queue[edge.end] = True
 
-    def relabel(node):
+        return edges, excess, label, node
+
+    def relabel(node: int):
         label[node] = 1 + min(label[edge.end]
                               for edge in graph.get_edges_by_node(node)
                               if edge.residual_capacity() > 0)
-        return excess, label, node
 
-    yield PREFLOW, preflow()
-
-    # todo remove prints
-    print("edges:")
-    for edge in graph.get_edges():
-        if not edge.reverse:
-            print(edge.start, edge.end, edge.capacity)
-    print()
-
-    print("source:", source, "target:", target)
+    yield preflow()
 
     while active:
-        print(active)
-
         u = active.popleft()
         in_queue[u] = False
 
-        print("node:", u, "label:", label[u], "excess:", excess[u])
-
-        if any(label[u] > label[edge.end] for edge in graph.get_edges_by_node(u)):
-            yield PUSH, push(u)
+        if any(label[edge.start] == label[edge.end] + 1 and
+               edge.residual_capacity() > 0
+               for edge in graph.get_edges_by_node(u)):
+            yield push(u)
         else:
-            yield RELABEL, relabel(u)
+            relabel(u)
 
         if u not in (source, target) and excess[u] > 0:
             active.append(u)
