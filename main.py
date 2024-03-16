@@ -282,17 +282,17 @@ class Visualization(tk.Frame):
 
     def start(self):
         try:
-            intervall = int(self.ent_time.get())
+            interval = int(self.ent_time.get())
 
             self.opt_algorithm["state"] = tk.DISABLED
             self.btn_step["state"] = tk.DISABLED
             self.btn_start["state"] = tk.DISABLED
             self.ent_time["state"] = tk.DISABLED
 
-            self._jop = window.after(intervall, self.start)
+            self._jop = window.after(interval, self.start)
             self.step()
         except ValueError:
-            messagebox.showerror("Error", "intervall must be an integer")
+            messagebox.showerror("Error", "interval must be an integer")
 
     def stop(self):
         self.btn_step["state"] = tk.NORMAL
@@ -328,7 +328,7 @@ Goldberg-Tarjan: label and excess
 """)
 
 
-class TestEnviroment(tk.Frame):
+class TestEnvironment(tk.Frame):
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -434,9 +434,9 @@ frame_visualization = Visualization(tabs)
 frame_visualization.pack()
 tabs.add(frame_visualization, text="Visualization")
 
-frame_test_envoirement = TestEnviroment(tabs)
-frame_test_envoirement.pack()
-tabs.add(frame_test_envoirement, text="Test environment")
+frame_test_environment = TestEnvironment(tabs)
+frame_test_environment.pack()
+tabs.add(frame_test_environment, text="Test environment")
 
 tabs.pack(expand=True, fill="both")
 

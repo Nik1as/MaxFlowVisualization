@@ -44,14 +44,4 @@ def generate(n: int, max_capacity: int) -> tuple[int, int, Graph]:
         if edge.end == target and not edge.reverse:
             edge.capacity = (degree_target + 1) * max_capacity
 
-    # TODO
-    """
-    while True:
-        parent, dist = max_flow.bfs(graph, source, target)
-        if dist[target] <= 3:
-            pass  # add nodes between source and target
-        else:
-            break
-    """
-
     return source, target, graph
