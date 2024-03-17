@@ -59,7 +59,7 @@ class Visualization(tk.Frame):
         self.btn_step = tk.Button(text="step", master=config_bar, command=self.step)
         self.btn_step.grid(row=0, column=6, padx=10)
 
-        self.ent_time = utils.EntryWithPlaceholder(master=config_bar, placeholder="intervall in ms")
+        self.ent_time = utils.EntryWithPlaceholder(master=config_bar, placeholder="interval in ms")
         self.ent_time.grid(row=0, column=7, padx=10)
 
         self.btn_start = tk.Button(text="start", master=config_bar, command=self.start)
@@ -371,7 +371,7 @@ class TestEnvironment(tk.Frame):
             for _ in range(instances):
                 source, target, graph = random_graph.generate(nodes, capacity)
 
-                result = [["Algorithm", "flow preservation", "capacity bound", "saturated cut", "max flow"]]
+                results = []
                 flow_values = []
 
                 for name, algo_func in ALGORITHMS_MAP.items():
@@ -402,11 +402,13 @@ class TestEnvironment(tk.Frame):
                     flow = flow_out[source] - flow_in[source]
                     flow_values.append(flow)
 
-                    result.append([name, flow_preservation, capacity_bound, saturated_cut, flow])
+                    results.append([name, flow_preservation, capacity_bound, saturated_cut, flow])
 
                 self.txt_output.insert("end-1c", "\n" +
-                                       tabulate(result, headers="firstrow", tablefmt="fancy_grid") +
-                                       f"\nidetical max flow: {len(set(flow_values)) == 1}\n")
+                                       tabulate(results,
+                                                headers=["Algorithm", "flow preservation", "capacity bound", "saturated cut", "max flow"],
+                                                tablefmt="fancy_grid") +
+                                       f"\nidentical max flow value: {len(set(flow_values)) == 1}\n")
                 self.txt_output.tag_add("center", "1.0", "end")
             self.txt_output.insert("end-1c", "\n\n")
 

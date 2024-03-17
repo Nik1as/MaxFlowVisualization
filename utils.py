@@ -62,10 +62,29 @@ def text_position(p1, p2, offset):
 def get_source_and_target(graph: Graph):
     combinations = list(itertools.combinations(range(graph.number_of_nodes()), 2))
     random.shuffle(combinations)
+
+    best_pair = None
+    max_length = -1
+
     for s, t in combinations:
-        if max_flow.dfs(graph, s, t):
-            return s, t
-    return random.sample(range(graph.number_of_nodes()), 2)
+        result = max_flow.dfs(graph, s, t)
+        if result is not None:
+            parent, level = result
+
+            length = 0
+            current = t
+            while current != s:
+                current = parent[current].start
+                length += 1
+
+            if length >= 3:
+                return s, t
+
+            if length > max_length:
+                max_length = length
+                best_pair = (s, t)
+
+    return best_pair
 
 
 class EntryWithPlaceholder(tk.Entry):
