@@ -204,7 +204,7 @@ class Visualization(tk.Frame):
                                 outline="red", width=3)
 
         for edge in self.graph.get_base_edges():
-            color = "red" if edge in edges else "black"
+            color = "red" if edge in edges or edge.reverse_edge in edges else "black"
             self.render_edge(edge, color)
 
     def render_ford_fulkerson(self, edges):
