@@ -21,6 +21,7 @@ class Edge:
         self.reverse = reverse
         self.reverse_edge = None
         self.flow = 0
+        self.prev_flow = 0
 
     def residual_capacity(self):
         if self.reverse:
@@ -92,3 +93,4 @@ class Graph:
     def reset(self):
         for edge in self.get_edges():
             edge.flow = 0
+            edge.prev_flow = edge.residual_capacity()

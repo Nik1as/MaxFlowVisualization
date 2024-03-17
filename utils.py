@@ -4,7 +4,7 @@ import random
 import tkinter as tk
 
 import max_flow
-from graph import Graph, Node
+from graph import Graph, Node, Edge
 
 
 class Point:
@@ -57,6 +57,13 @@ def text_position(p1, p2, offset):
     mid_y += orthogonal_y
 
     return mid_x, mid_y
+
+
+def edge_text(edge: Edge):
+    if edge.residual_capacity() == edge.prev_flow:
+        return f"{edge.residual_capacity()}"
+    else:
+        return f"{edge.residual_capacity()} ({edge.prev_flow})"
 
 
 def get_source_and_target(graph: Graph):

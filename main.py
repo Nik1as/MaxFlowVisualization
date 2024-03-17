@@ -23,8 +23,8 @@ class Visualization(tk.Frame):
     DEFAULT_NODES = 12
     DEFAULT_MAX_CAPACITY = 10
     NODE_RADIUS = 20
-    TEXT_OFFSET = 15
-    ANGLE = 25
+    TEXT_OFFSET = 20
+    ANGLE = 15
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -128,7 +128,7 @@ class Visualization(tk.Frame):
 
         p1 = utils.Point(x1, y1)
         p2 = utils.Point(x2, y2)
-        self.canvas.create_text(*utils.text_position(p1, p2, self.TEXT_OFFSET), text=str(edge.residual_capacity()))
+        self.canvas.create_text(*utils.text_position(p1, p2, self.TEXT_OFFSET), text=utils.edge_text(edge))
 
     def render_double_edge(self, edge: graph.Edge, color: str):
         width = self.canvas.winfo_width()
@@ -148,7 +148,7 @@ class Visualization(tk.Frame):
                                 p2.x, p2.y,
                                 width=3, fill=color, arrow=tk.LAST, arrowshape=(10, 15, 5))
         self.canvas.create_text(*utils.text_position(p1, p2, self.TEXT_OFFSET),
-                                text=str(edge.residual_capacity()))
+                                text=utils.edge_text(edge))
 
         p1 = utils.Point(*utils.rotate(node2, utils.Point(x2, y2), math.radians(self.ANGLE)))
         p2 = utils.Point(*utils.rotate(node1, utils.Point(x1, y1), math.radians(-self.ANGLE)))
@@ -157,7 +157,7 @@ class Visualization(tk.Frame):
                                 p2.x, p2.y,
                                 width=3, fill=color, arrow=tk.LAST, arrowshape=(10, 15, 5))
         self.canvas.create_text(*utils.text_position(p1, p2, self.TEXT_OFFSET),
-                                text=str(edge.reverse_edge.residual_capacity()))
+                                text=utils.edge_text(edge.reverse_edge))
 
     def render_edge(self, edge: graph.Edge, color: str):
         if edge.residual_capacity() > 0 and edge.reverse_edge.residual_capacity() > 0:
@@ -167,41 +167,61 @@ class Visualization(tk.Frame):
         elif edge.reverse_edge.residual_capacity() > 0:
             self.render_single_edge(edge.reverse_edge, color)
 
-    def render_step(self, result):
-        self.render()
-
+    def render_dinic(self, edges, level):
         width = self.canvas.winfo_width()
         height = self.canvas.winfo_height()
 
-        match self.algo_variable.get():
-            case "Dinic":
-                edges, level = result
-                for node in self.graph.get_nodes():
-                    position = utils.absolute_position(node, width, height)
-                    if level[node.node_id] >= 0:
-                        self.canvas.create_text(*position,
-                                                text=f"{level[node.node_id]}",
-                                                fill="white",
-                                                font=("Helvetica", "10", "bold"))
-            case "Goldberg-Tarjan":
-                edges, excess, label, node_id = result
-                for node in self.graph.get_nodes():
-                    position = utils.absolute_position(node, width, height)
-                    self.canvas.create_text(*position,
-                                            text=f"{label[node.node_id]} | {excess[node.node_id]}",
-                                            fill="white",
-                                            font=("Helvetica", "10", "bold"))
+        for node in self.graph.get_nodes():
+            position = utils.absolute_position(node, width, height)
+            if level[node.node_id] >= 0:
+                self.canvas.create_text(*position,
+                                        text=f"{level[node.node_id]}",
+                                        fill="white",
+                                        font=("Helvetica", "10", "bold"))
 
-                absolute_x, absolute_y = utils.absolute_position(self.graph.get_node(node_id), width, height)
-                self.canvas.create_oval(absolute_x - self.NODE_RADIUS, absolute_y - self.NODE_RADIUS,
-                                        absolute_x + self.NODE_RADIUS, absolute_y + self.NODE_RADIUS,
-                                        outline="red", width=3)
-            case _:
-                edges = result
+        for edge in self.graph.get_base_edges():
+            color = "light grey"
+            if level[edge.start] + 1 == level[edge.end] and level[edge.start] != -1:
+                color = "black"
+            if edge in edges:
+                color = "red"
+            self.render_edge(edge, color)
+
+    def render_goldberg_tarjan(self, edges, excess, label, node_id):
+        width = self.canvas.winfo_width()
+        height = self.canvas.winfo_height()
+
+        for node in self.graph.get_nodes():
+            position = utils.absolute_position(node, width, height)
+            self.canvas.create_text(*position,
+                                    text=f"{label[node.node_id]} | {excess[node.node_id]}",
+                                    fill="white",
+                                    font=("Helvetica", "10", "bold"))
+
+        absolute_x, absolute_y = utils.absolute_position(self.graph.get_node(node_id), width, height)
+        self.canvas.create_oval(absolute_x - self.NODE_RADIUS, absolute_y - self.NODE_RADIUS,
+                                absolute_x + self.NODE_RADIUS, absolute_y + self.NODE_RADIUS,
+                                outline="red", width=3)
 
         for edge in self.graph.get_base_edges():
             color = "red" if edge in edges else "black"
             self.render_edge(edge, color)
+
+    def render_ford_fulkerson(self, edges):
+        for edge in self.graph.get_base_edges():
+            color = "red" if edge in edges else "black"
+            self.render_edge(edge, color)
+
+    def render_step(self, result):
+        self.render()
+
+        match self.algo_variable.get():
+            case "Dinic":
+                self.render_dinic(*result)
+            case "Goldberg-Tarjan":
+                self.render_goldberg_tarjan(*result)
+            case _:
+                self.render_ford_fulkerson(result)
 
     def render_result(self):
         width = self.canvas.winfo_width()
@@ -270,6 +290,9 @@ class Visualization(tk.Frame):
             messagebox.showerror("Error", "nodes and capacity must be an integer")
 
     def step(self):
+        for edge in self.graph.get_edges():
+            edge.prev_flow = edge.residual_capacity()
+
         if self.max_flow_algo is None:
             self.max_flow_algo = ALGORITHMS_MAP[self.algo_variable.get()](self.graph, self.source, self.target)
             self.opt_algorithm["state"] = tk.DISABLED
