@@ -14,6 +14,16 @@ class Point:
         self.y = y
 
 
+def flow_value(graph: Graph, source: int):
+    value = 0
+    for edge in graph.get_edges():
+        if edge.start == source:
+            value += edge.flow
+        if edge.end == source:
+            value -= edge.flow
+    return value
+
+
 def euclidean_distance(p1, p2):
     return math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
 
@@ -70,7 +80,7 @@ def get_source_and_target(graph: Graph):
     combinations = list(itertools.combinations(range(graph.number_of_nodes()), 2))
     random.shuffle(combinations)
 
-    best_pair = None
+    best_pair = (0, 1)
     max_length = -1
 
     for s, t in combinations:
@@ -90,7 +100,6 @@ def get_source_and_target(graph: Graph):
             if length > max_length:
                 max_length = length
                 best_pair = (s, t)
-
     return best_pair
 
 

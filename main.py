@@ -1,4 +1,5 @@
 import math
+import random
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
@@ -262,14 +263,7 @@ class Visualization(tk.Frame):
             window.after_cancel(self._jop)
             self._jop = None
 
-        flow_value = 0
-        for edge in self.graph.get_edges():
-            if edge.start == self.source:
-                flow_value += edge.flow
-            if edge.end == self.source:
-                flow_value -= edge.flow
-
-        messagebox.showinfo("Info", f"algorithm terminated!\nmax-flow value: {flow_value}")
+        messagebox.showinfo("Info", f"algorithm terminated!\nmax-flow value: {utils.flow_value(self.graph, self.source)}")
 
     def reset(self):
         if self._jop is not None:
@@ -364,6 +358,7 @@ Goldberg-Tarjan: label and excess
 
 
 class TestEnvironment(tk.Frame):
+    EDGE_CHANGES = 5
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -397,55 +392,87 @@ class TestEnvironment(tk.Frame):
                 continue
             try:
                 instances, nodes, capacity = map(int, line.split(","))
+                self.test_triple(instances, nodes, capacity)
             except ValueError:
                 messagebox.showerror("Error", "invalid input")
                 return
 
-            self.txt_output.insert("end-1c", f"instances: {instances}\nnodes: {nodes}\ncapacity: {capacity}\n")
-
-            for _ in range(instances):
-                source, target, graph = random_graph.generate(nodes, capacity)
-
-                results = []
-                flow_values = []
-
-                for name, algo_func in ALGORITHMS_MAP.items():
-                    graph.reset()
-                    algo = algo_func(graph, source, target)
-
-                    for _ in algo:
-                        pass
-
-                    # capacity bound check
-                    capacity_bound = True
-                    flow_in = [0 for _ in range(graph.number_of_nodes())]
-                    flow_out = [0 for _ in range(graph.number_of_nodes())]
-
-                    for edge in graph.get_edges():
-                        if not edge.reverse:
-                            flow_out[edge.start] += edge.flow
-                            flow_in[edge.end] += edge.flow
-                            if edge.flow > edge.capacity:
-                                capacity_bound = False
-
-                    # flow preservation check
-                    flow_preservation = all(flow_in[i] == flow_out[i] for i in range(graph.number_of_nodes())
-                                            if i not in (source, target))
-
-                    saturated_cut = max_flow.bfs(graph, source, target) is None
-
-                    flow = flow_out[source] - flow_in[source]
-                    flow_values.append(flow)
-
-                    results.append([name, flow_preservation, capacity_bound, saturated_cut, flow])
-
-                self.txt_output.insert("end-1c", "\n" +
-                                       tabulate(results,
-                                                headers=["Algorithm", "flow preservation", "capacity bound", "saturated cut", "max flow"],
-                                                tablefmt="fancy_grid") +
-                                       f"\nidentical max flow value: {len(set(flow_values)) == 1}\n")
-                self.txt_output.tag_add("center", "1.0", "end")
             self.txt_output.insert("end-1c", "\n\n")
+
+    def test_triple(self, instances: int, nodes: int, capacity: int):
+        self.txt_output.insert("end-1c", f"instances: {instances}\nnodes: {nodes}\ncapacity: {capacity}\n")
+
+        for _ in range(instances):
+            source, target, graph = random_graph.generate(nodes, capacity)
+
+            results = []
+            flow_values = []
+
+            for name, algo_func in ALGORITHMS_MAP.items():
+                graph.reset()
+
+                for _ in algo_func(graph, source, target):
+                    pass
+
+                # capacity bound check
+                capacity_bound = True
+                flow_in = [0 for _ in range(graph.number_of_nodes())]
+                flow_out = [0 for _ in range(graph.number_of_nodes())]
+
+                for edge in graph.get_edges():
+                    if not edge.reverse:
+                        flow_out[edge.start] += edge.flow
+                        flow_in[edge.end] += edge.flow
+                        if edge.flow > edge.capacity:
+                            capacity_bound = False
+
+                # flow preservation check
+                flow_preservation = all(flow_in[i] == flow_out[i] for i in range(graph.number_of_nodes())
+                                        if i not in (source, target))
+
+                saturated_cut = max_flow.bfs(graph, source, target) is None
+
+                flow = flow_out[source] - flow_in[source]
+                flow_values.append(flow)
+
+                results.append([name, flow_preservation, capacity_bound, saturated_cut, flow])
+
+            # change edge values (capacities)
+            change_capacity_passed = True
+            if len(set(flow_values)) == 1:
+                flow_value = flow_values[0]
+
+                for _ in range(self.EDGE_CHANGES):
+                    graph_copy = graph.copy()
+                    edge = random.choice(graph_copy.get_base_edges())
+                    capacity_change = random.randint(1, capacity)
+
+                    flow_values = []
+
+                    edge.capacity += capacity_change
+
+                    for name, algo_func in ALGORITHMS_MAP.items():
+                        graph_copy.reset()
+                        for _ in algo_func(graph_copy, source, target):
+                            pass
+                        flow_value_new = utils.flow_value(graph_copy, source)
+                        flow_values.append(flow_value_new)
+
+                        if not (flow_value <= flow_value_new <= flow_value + capacity_change):
+                            change_capacity_passed = False
+
+                    if len(set(flow_values)) != 1:
+                        change_capacity_passed = False
+
+            self.txt_output.insert("end-1c", "\n" +
+                                   tabulate(results,
+                                            headers=["Algorithm", "flow preservation", "capacity bound", "saturated cut", "max flow"],
+                                            tablefmt="fancy_grid") +
+                                   "\n" +
+                                   f"identical max flow value: {len(set(flow_values)) == 1}\n" +
+                                   f"edge value changes passed: {change_capacity_passed}\n")
+
+            self.txt_output.tag_add("center", "1.0", "end")
 
 
 window = tk.Tk()

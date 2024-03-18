@@ -94,3 +94,9 @@ class Graph:
         for edge in self.get_edges():
             edge.flow = 0
             edge.prev_flow = edge.residual_capacity()
+
+    def copy(self):
+        graph_copy = Graph(self.n)
+        for edge in self.get_base_edges():
+            graph_copy.add_edge(edge.start, edge.end, edge.capacity)
+        return graph_copy
