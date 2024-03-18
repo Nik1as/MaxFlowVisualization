@@ -20,7 +20,7 @@ ALGORITHMS = list(ALGORITHMS_MAP.keys())
 
 
 class Visualization(tk.Frame):
-    DEFAULT_NODES = 12
+    DEFAULT_NODES = 16
     DEFAULT_MAX_CAPACITY = 10
     NODE_RADIUS = 20
     TEXT_OFFSET = 20
@@ -56,20 +56,23 @@ class Visualization(tk.Frame):
         self.btn_reset = tk.Button(text="reset", master=config_bar, command=self.reset)
         self.btn_reset.grid(row=0, column=5, padx=10)
 
+        self.btn_reset = tk.Button(text="generate", master=config_bar, command=self.generate)
+        self.btn_reset.grid(row=0, column=6, padx=10)
+
         self.btn_step = tk.Button(text="step", master=config_bar, command=self.step)
-        self.btn_step.grid(row=0, column=6, padx=10)
+        self.btn_step.grid(row=0, column=7, padx=10)
 
         self.ent_time = utils.EntryWithPlaceholder(master=config_bar, placeholder="interval in ms")
-        self.ent_time.grid(row=0, column=7, padx=10)
+        self.ent_time.grid(row=0, column=8, padx=10)
 
         self.btn_start = tk.Button(text="start", master=config_bar, command=self.start)
-        self.btn_start.grid(row=0, column=8, padx=10)
+        self.btn_start.grid(row=0, column=9, padx=10)
 
         self.btn_stop = tk.Button(text="stop", master=config_bar, command=self.stop)
-        self.btn_stop.grid(row=0, column=9, padx=10)
+        self.btn_stop.grid(row=0, column=10, padx=10)
 
         self.btn_help = tk.Button(text="help", master=config_bar, command=self.help)
-        self.btn_help.grid(row=0, column=10, padx=11)
+        self.btn_help.grid(row=0, column=11, padx=11)
 
         config_bar.pack(anchor=tk.N)
 
@@ -79,6 +82,7 @@ class Visualization(tk.Frame):
         self._jop = None
 
         self.source, self.target, self.graph = random_graph.generate(self.DEFAULT_NODES, self.DEFAULT_MAX_CAPACITY)
+        self.graph.reset()
 
         self.after(100, self.render)
 
@@ -253,7 +257,7 @@ class Visualization(tk.Frame):
         self.btn_step["state"] = tk.DISABLED
         self.btn_start["state"] = tk.DISABLED
         self.ent_time["state"] = tk.DISABLED
-        self.render_result()
+        self.render()
         if self._jop is not None:
             window.after_cancel(self._jop)
             self._jop = None
@@ -272,22 +276,30 @@ class Visualization(tk.Frame):
             window.after_cancel(self._jop)
             self._jop = None
 
+        self.graph.reset()
+        self.max_flow_algo = None
+        self.render()
+
+        self.opt_algorithm["state"] = tk.NORMAL
+        self.btn_step["state"] = tk.NORMAL
+        self.btn_start["state"] = tk.NORMAL
+        self.btn_stop["state"] = tk.NORMAL
+        self.ent_time["state"] = tk.NORMAL
+
+    def generate(self):
+        self.reset()
+
         try:
             n = int(self.ent_nodes.get())
             capacity = int(self.ent_capacity.get())
 
             self.source, self.target, self.graph = random_graph.generate(n, capacity)
+            self.graph.reset()
             self.render()
-
-            self.opt_algorithm["state"] = tk.NORMAL
-            self.btn_step["state"] = tk.NORMAL
-            self.btn_start["state"] = tk.NORMAL
-            self.btn_stop["state"] = tk.NORMAL
-            self.ent_time["state"] = tk.NORMAL
 
             self.max_flow_algo = None
         except ValueError:
-            messagebox.showerror("Error", "nodes and capacity must be an integer")
+            messagebox.showerror("Error", "nodes and capacity must be integers")
 
     def step(self):
         for edge in self.graph.get_edges():
