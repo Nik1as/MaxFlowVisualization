@@ -184,7 +184,7 @@ class Visualization(tk.Frame):
             for end in range(start + 1, n):
                 if self.graph.has_edge(start, end):
                     color = "light grey"
-                    if level[start] + 1 == level[end] and level[start] != -1:
+                    if (level[start] + 1 == level[end] or level[end] + 1 == level[start]) and level[start] != -1 and level[end] != -1:
                         color = "black"
                     if utils.contains_edge(edges, start, end) or utils.contains_edge(edges, end, start):
                         color = "red"
@@ -343,8 +343,10 @@ class Visualization(tk.Frame):
 Max-Flow Algorithms Visualization
 
 notation:
-n: number of nodes\tm: number of edges
-F: max-flow value\tC: max capacity
+n: number of nodes
+m: number of edges
+F: max-flow value
+C: max capacity
 
 implemented algorithms:
 Ford-Fulkerson: O(m F)
@@ -491,9 +493,9 @@ window_width = 1200
 window_height = 1200
 screen_width = window.winfo_screenwidth()
 screen_height = window.winfo_screenheight()
-x = int((screen_width / 2) - (window_width / 2))
-y = int((screen_height / 2) - (window_height / 2))
-window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+screen_x = int((screen_width / 2) - (window_width / 2))
+screen_y = int((screen_height / 2) - (window_height / 2))
+window.geometry(f"{window_width}x{window_height}+{screen_x}+{screen_y}")
 
 window.columnconfigure(0, weight=1)
 window.rowconfigure(0, weight=1)
