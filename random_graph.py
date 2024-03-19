@@ -29,8 +29,7 @@ def generate(n: int, max_capacity: int) -> tuple[int, int, Graph]:
             edges.append((n1, n2))
 
     for n1, n2 in edges:
-        if not graph.has_edge(n1.node_id, n2.node_id):
-            graph.add_edge(n1.node_id, n2.node_id, random.randint(1, max_capacity))
+        graph.add_edge(n1.node_id, n2.node_id, random.randint(1, max_capacity))
 
     source, target = get_source_and_target(graph)
 

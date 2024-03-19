@@ -72,9 +72,9 @@ class Graph:
     def get_base_edges(self):
         return list(filter(lambda x: not x.reverse, self.get_edges()))
 
-    def has_edge(self, source, target):
-        for edge in self.get_edges_by_node(source):
-            if edge.start == source and edge.end == target:
+    def has_edge(self, start: int, end: int):
+        for edge in self.get_edges_by_node(start):
+            if edge.start == start and edge.end == end:
                 return True
         return False
 

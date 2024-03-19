@@ -24,6 +24,16 @@ def flow_value(graph: Graph, source: int):
     return value
 
 
+def aggregated_edge_values(graph: Graph, start: int, end: int):
+    residual_capacity = 0
+    prev_residual_capacity = 0
+    for edge in graph.get_edges_by_node(start):
+        if edge.end == end:
+            residual_capacity += edge.residual_capacity()
+            prev_residual_capacity += edge.prev_flow
+    return residual_capacity, prev_residual_capacity
+
+
 def euclidean_distance(p1, p2):
     return math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
 
@@ -69,11 +79,18 @@ def text_position(p1, p2, offset):
     return mid_x, mid_y
 
 
-def edge_text(edge: Edge):
-    if edge.residual_capacity() == edge.prev_flow:
-        return f"{edge.residual_capacity()}"
+def edge_text(residual_capacity: int, prev_residual_capacity: int):
+    if residual_capacity == prev_residual_capacity:
+        return f"{residual_capacity}"
     else:
-        return f"{edge.residual_capacity()} ({edge.prev_flow})"
+        return f"{residual_capacity} ({prev_residual_capacity})"
+
+
+def contains_edge(edges: list[Edge], start: int, end: int):
+    for edge in edges:
+        if edge.start == start and edge.end == end:
+            return True
+    return False
 
 
 def get_source_and_target(graph: Graph):
