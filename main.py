@@ -25,6 +25,8 @@ class Visualization(tk.Frame):
     NODE_RADIUS = 20
     TEXT_OFFSET = 25
     ANGLE = 10
+    CUT_OFFSET = 20
+    CUT_LENGTH = 10
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -220,6 +222,36 @@ class Visualization(tk.Frame):
                 if self.graph.has_edge(start, end):
                     color = "red" if utils.contains_edge(edges, start, end) or utils.contains_edge(edges, end, start) else "black"
                     self.render_edge(start, end, color)
+
+        self.render_saturated_cut()
+
+    def render_saturated_cut(self):
+        width = self.canvas.winfo_width()
+        height = self.canvas.winfo_height()
+
+        cut = utils.saturated_cut(self.graph, self.source)
+        for edge in self.graph.get_base_edges():
+            if edge.start in cut and edge.end not in cut:
+                node1 = utils.Point(*utils.absolute_position(self.graph.get_node(edge.start), width, height))
+                node2 = utils.Point(*utils.absolute_position(self.graph.get_node(edge.end), width, height))
+
+                x, y, _, _ = utils.edge_positions(node1,
+                                                  node2,
+                                                  self.NODE_RADIUS)
+
+                dx, dy = node2.x - node1.x, node2.y - node1.y
+                length = (dx ** 2 + dy ** 2) ** 0.5
+
+                dx_norm = dx / length
+                dy_norm = dy / length
+
+                x, y = x + self.CUT_OFFSET * dx_norm, y + self.CUT_OFFSET * dy_norm
+                orthogonal_x, orthogonal_y = -dy_norm * self.CUT_LENGTH, dx_norm * self.CUT_LENGTH
+
+                x1, y1 = x + orthogonal_x, y + orthogonal_y
+                x2, y2 = x - orthogonal_x, y - orthogonal_y
+
+                self.canvas.create_line(x1, y1, x2, y2, width=3, fill="blue")
 
     def render_ford_fulkerson(self, edges):
         n = self.graph.number_of_nodes()

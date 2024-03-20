@@ -20,7 +20,7 @@ def dfs(graph: Graph, source: int, target: int) -> tuple[list[Edge], list[int]]:
                 visited[edge.end] = True
                 parent[edge.end] = edge
                 if edge.end == target:
-                    return parent, list()
+                    return parent, []
 
 
 def bfs_capacity(graph: Graph, source: int, target: int, delta: int) -> tuple[list[Edge], list[int]]:

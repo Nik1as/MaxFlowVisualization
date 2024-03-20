@@ -2,6 +2,7 @@ import itertools
 import math
 import random
 import tkinter as tk
+from collections import deque
 
 import max_flow
 from graph import Graph, Node, Edge
@@ -22,6 +23,24 @@ def flow_value(graph: Graph, source: int):
         if edge.end == source:
             value -= edge.flow
     return value
+
+
+def saturated_cut(graph: Graph, source: int):
+    nodes = set()
+    stack = deque([source])
+    visited = [False] * graph.number_of_nodes()
+    visited[source] = True
+
+    while stack:
+        u = stack.popleft()
+        nodes.add(u)
+
+        for edge in graph.get_edges_by_node(u):
+            if not visited[edge.end] and edge.residual_capacity() > 0:
+                stack.appendleft(edge.end)
+                visited[edge.end] = True
+
+    return nodes
 
 
 def aggregated_edge_values(graph: Graph, start: int, end: int):
