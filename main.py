@@ -155,17 +155,21 @@ class Visualization(tk.Frame):
         self.canvas.create_text(*utils.text_position(p1, p2, self.TEXT_OFFSET),
                                 text=utils.edge_text(residual_capacity, prev_residual_capacity))
 
-    def render_edge(self, start: int, end: int, color: str):
+    def render_edge(self, start: int, end: int, color: str = None, color_forward=None, color_reverse=None):
         residual_capacity, prev_residual_capacity = utils.aggregated_edge_values(self.graph, start, end)
         residual_capacity_reverse, prev_residual_capacity_reverse = utils.aggregated_edge_values(self.graph, end, start)
 
+        color = color or "black"
+        color_forward = color_forward or color
+        color_reverse = color_reverse or color
+
         if residual_capacity > 0 and residual_capacity_reverse > 0:
-            self.render_double_edge(start, end, residual_capacity, prev_residual_capacity, color)
-            self.render_double_edge(end, start, residual_capacity_reverse, prev_residual_capacity_reverse, color)
+            self.render_double_edge(start, end, residual_capacity, prev_residual_capacity, color_forward)
+            self.render_double_edge(end, start, residual_capacity_reverse, prev_residual_capacity_reverse, color_reverse)
         elif residual_capacity > 0:
-            self.render_single_edge(start, end, residual_capacity, prev_residual_capacity, color)
+            self.render_single_edge(start, end, residual_capacity, prev_residual_capacity, color_forward)
         elif residual_capacity_reverse > 0:
-            self.render_single_edge(end, start, residual_capacity_reverse, prev_residual_capacity_reverse, color)
+            self.render_single_edge(end, start, residual_capacity_reverse, prev_residual_capacity_reverse, color_reverse)
 
     def render_dinic(self, edges, level):
         width = self.canvas.winfo_width()
@@ -183,12 +187,16 @@ class Visualization(tk.Frame):
         for start in range(n):
             for end in range(start + 1, n):
                 if self.graph.has_edge(start, end):
-                    color = "light grey"
-                    if (level[start] + 1 == level[end] or level[end] + 1 == level[start]) and level[start] != -1 and level[end] != -1:
-                        color = "black"
+                    color_forward = "light grey"
+                    color_reverse = "light grey"
+                    if level[start] + 1 == level[end] and level[start] != -1:
+                        color_forward = "black"
+                    if level[end] + 1 == level[start] and level[end] != -1:
+                        color_reverse = "black"
                     if utils.contains_edge(edges, start, end) or utils.contains_edge(edges, end, start):
-                        color = "red"
-                    self.render_edge(start, end, color)
+                        color_forward = "red"
+                        color_reverse = "red"
+                    self.render_edge(start, end, color_forward=color_forward, color_reverse=color_reverse)
 
     def render_goldberg_tarjan(self, edges, excess, label, node_id):
         width = self.canvas.winfo_width()
